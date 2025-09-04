@@ -1,0 +1,158 @@
+# Document OCR Pipeline - Production Configuration
+# 本番用設定ファイル
+
+# システム全体設定
+system:
+  log_level: "INFO"
+  temp_dir: "data/temp"
+  max_workers: 4
+  cleanup_temp: true
+
+# ディレクトリ設定
+directories:
+  input: "data/input"
+  output: "data/output"
+  models: "data/models"
+  converted_images: "data/output/converted_images"
+  llm_judgments: "data/output/llm_judgments"
+  dewarped: "data/output/dewarped"
+  split_images: "data/output/split_images"
+  super_resolved: "data/output/super_resolved"
+  final_results: "data/output/final_results"
+
+# PDF処理設定
+pdf_processing:
+  target_size: [2048, 2560] # [2048, 2560]
+  min_dpi: 50 # 100
+  max_dpi: 600
+  default_dpi: 300
+  image_format: "JPEG"
+  image_quality: 95
+
+# LLM判定設定（本番用）
+llm_evaluation:
+  
+  #判定をひとまとめにする場合
+  judgment:
+    provider: "gemini"
+    model: "gemini-2.0-flash-lite"    # flash or pro
+    max_retries: 3
+    timeout: 30
+    temperature: 0.1
+    max_output_tokens: 8192    
+
+  # 細かく設定する場合
+  dewarp_judgment:
+    provider: "gemini"
+    model: "gemini-2.0-flash-lite"    # flash or pro
+    max_retries: 3
+    timeout: 30
+    temperature: 0.1
+    max_output_tokens: 8192
+  
+  # OrientationDetector で使う LLM の設定
+  orientation_judgment:
+    provider: "gemini"
+    model: "gemini-2.0-flash-lite"    # flash or pro
+    max_retries: 3
+    timeout: 30
+    temperature: 0.1
+    max_output_tokens: 8192
+
+  page_count_etc_judgment:
+    provider: "gemini"
+    model: "gemini-2.0-flash-lite"    # flash or pro
+    max_retries: 3
+    timeout: 30
+    temperature: 0.1
+    max_output_tokens: 8192
+  
+  # OCR用の設定
+  ocr:
+    provider: "gemini"
+    model: "gemini-2.5-flash"      # 2.5 flashに変更（65,536トークン出力対応）
+    max_retries: 3
+    timeout: 30
+    temperature: 0.1
+    max_output_tokens: 65536  # 65,536 tokens - Gemini 2.5 Flashの出力上限
+  
+  # API Key は .env ファイルで設定: GEMINI_API_KEY=your-key-here
+
+# OCR設定
+ocr:
+  contract_mode: true  # 契約書用の構造化OCRを使用
+
+# 歪み補正設定
+dewarping:
+  yolo_model_path: "data/models/yolo_weights/best.pt"
+  confidence_threshold: 0.6
+  num_grid_lines: 12
+  polynomial_degree: 4
+  num_point_percent: 0.2
+  threshold_coefficient: 0.03
+  enable_strong_correction: true
+  yolo_device: "cpu"              # CPU使用でGPUメモリ問題を回避
+  crop_margin_px: 0
+  mask_dilation_px: 15
+
+# 回転判定および補正設定
+rotation:
+  num_strips: 3
+  additional_retry_strips: 3
+  max_total_strips: 6
+  strip_rel_height: 0.03
+  min_strip_height: 35
+  density_threshold: 0.01
+  density_upper_threshold: 0.8
+  h_variance_threshold: 0.08
+  v_variance_threshold: 0.01
+  enable_star_mark: true
+  star_tile_grid: 8
+  star_text_density_threshold: 0.12
+  star_relative_radius_height: 0.40
+  star_relative_radius_width: 0.18
+  star_inner_ratio: 0.45
+  star_points: 5
+  star_line_width: 2
+  min_star_radius: 14
+  max_star_radius: 90
+  max_full_tie_retries: 2
+  star_text_font_size_factor: 1.6
+  orient_color_map: { O: red, CW: blue, CCW: yellow }
+
+
+# 画像分割設定
+split_image_for_ocr:
+  num_splits: 5
+  overlap_ratio: 0.1
+  min_height_per_split: 100
+  save_original: true
+
+# 超解像設定
+super_resolution:
+  enabled: false                  # 超解像を無効にする
+  model_type: "DRCT"
+  model_path: "data/models/drct_weights/DRCT-L.pth"
+  model_variant: "L"           # "L" (6層) または "XL" (14層)
+  scale_factor: 4
+  tile_size: 256
+  tile_overlap: 32
+  window_size: 16
+  device: "auto"
+  
+  # サイズ制限設定（メモリ効率とパフォーマンス向上）
+  max_input_size: [2048, 2560]    # 幅×高さの基準サイズ（画素数=5,242,880で判定）
+  skip_large_images: true         # この画素数を超える画像をスキップするかどうか
+
+# OCR設定（本番用）
+ocr:
+  provider: "llm"
+  llm_model: "gemini-2.5-flash"    # 2.5 flashに変更
+  combine_results: true
+  output_format: "markdown"
+
+# デバッグ・開発設定（本番用）
+debug:
+  save_intermediate_results: false  # 本番では中間結果を保存しない
+  verbose_logging: false            # 本番では簡潔なログ
+  skip_cleanup: false               # 本番では適切にクリーンアップ
