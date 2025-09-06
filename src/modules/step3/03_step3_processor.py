@@ -123,6 +123,7 @@ class Step3Processor:
                 "processed_pages": total_processed,
                 "rotated_images": total_rotated,
                 "page_results": page_results,
+                "page_data": page_judgments,  # 元のページデータを保持
                 "summary": summary
             }
             

@@ -103,6 +103,30 @@ class ComponentInitializer:
         except Exception as e:
             logger.error(f"❌ Step3プロセッサー初期化エラー: {e}")
         
+        # Step4: ページ数等判定・ページ分割プロセッサー初期化
+        try:
+            if self.config.get('enable_step4', True):  # デフォルトで有効
+                from src.modules.step4 import PageCountEvaluator, PageSplitter, Step4Processor
+                
+                # 個別コンポーネントを初期化
+                page_count_evaluator = PageCountEvaluator(self.config)
+                page_splitter = PageSplitter(self.config)
+                
+                # 統合プロセッサーを初期化（プロンプトは後でmain_pipelineで設定）
+                if all([page_count_evaluator, page_splitter]):
+                    components['step4_processor'] = Step4Processor(
+                        page_count_evaluator, page_splitter, {}
+                    )
+                    components['page_count_evaluator'] = page_count_evaluator
+                    components['page_splitter'] = page_splitter
+                    logger.debug("Step4統合プロセッサー初期化完了")
+                else:
+                    logger.warning("Step4個別コンポーネント初期化失敗")
+            else:
+                logger.debug("Step4処理は無効に設定されています")
+        except Exception as e:
+            logger.error(f"❌ Step4プロセッサー初期化エラー: {e}")
+        
         # TODO: 他のコンポーネント初期化（後で実装）
         # components.update({
         #     'llm_evaluator_judgment': LLMEvaluatorJudgment(self.config.get('llm_evaluation', {}), self.prompts),

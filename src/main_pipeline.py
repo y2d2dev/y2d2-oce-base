@@ -82,7 +82,12 @@ class DocumentOCRPipeline:
             # Step3のLLM評価器にプロンプトを設定
             self.orientation_detector.prompts = self.prompts
         
-        # Step4以降のコンポーネント（未実装）
+        # Step4: Step4統合プロセッサー（プロンプトを設定）
+        self.step4_processor = components.get('step4_processor')
+        if self.step4_processor:
+            self.step4_processor.prompts = self.prompts
+        
+        # Step5以降のコンポーネント（未実装）
         # self.llm_evaluator_judgment = components.get('llm_evaluator_judgment')
         # self.llm_evaluator_ocr = components.get('llm_evaluator_ocr')
         # self.llm_evaluator_orientation = components.get('llm_evaluator_orientation')
@@ -177,6 +182,38 @@ class DocumentOCRPipeline:
         
         return await self.step3_processor.process_pages(page_results, session_dirs)
 
+    # Step4: ページ数等判定・ページ分割処理
+    async def _process_step4(self, step3_result: Dict, session_dirs: Dict) -> Dict:
+        """
+        ステップ4: ページ数等判定・ページ分割処理
+        
+        Args:
+            step3_result (Dict): Step3処理結果
+            session_dirs (Dict): セッションディレクトリ辞書
+            
+        Returns:
+            Dict: Step4処理結果
+        """
+        if not self.step4_processor:
+            logger.warning("Step4プロセッサーが初期化されていません。Step4処理をスキップします。")
+            return {
+                "success": False,
+                "error": "Step4プロセッサー初期化失敗",
+                "page_results": []
+            }
+        
+        # Step3の結果からページデータを取得
+        page_results = step3_result.get("page_data", [])
+        if not page_results:
+            logger.warning("Step4: 処理対象ページがありません")
+            return {
+                "success": True,
+                "page_results": [],
+                "message": "処理対象ページがありません"
+            }
+        
+        return await self.step4_processor.process_pages(page_results, session_dirs)
+
     async def process_pdf(self, pdf_path: str, output_session_id: Optional[str] = None) -> Dict:
         """
         PDFファイルを処理するメインメソッド（Step1のみ実装）
@@ -230,8 +267,21 @@ class DocumentOCRPipeline:
             if not step3_result.get("success"):
                 logger.warning("Step3処理で一部エラーが発生しましたが、処理を続行します")
             
+            # Step3の結果にStep2のページデータがない場合、Step2から引き継ぐ
+            if not step3_result.get("page_data") and step2_result.get("page_results"):
+                step3_result["page_data"] = step2_result["page_results"]
+            
+            # ステップ4: ページ数等判定・ページ分割
+            step4_result = await self._process_step4(step3_result, session_dirs)
+            pipeline_result["steps"]["step4_processing"] = step4_result
+            
+            if not step4_result.get("success"):
+                logger.warning("Step4処理で一部エラーが発生しましたが、処理を続行します")
+            
             # 最終結果を設定（最後に成功したStepの結果を使用）
-            if step3_result.get("success"):
+            if step4_result.get("success"):
+                pipeline_result["final_results"] = step4_result
+            elif step3_result.get("success"):
                 pipeline_result["final_results"] = step3_result
             elif step2_result.get("success"):
                 pipeline_result["final_results"] = step2_result

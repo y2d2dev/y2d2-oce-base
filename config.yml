@@ -11,6 +11,7 @@ system:
 # 処理ステップ設定
 enable_step2: true  # LLM判定・再画像化・歪み補正処理
 enable_step3: true  # 回転判定・補正処理
+enable_step4: true  # ページ数等判定・ページ分割処理
 
 # ディレクトリ設定
 directories:
@@ -65,7 +66,7 @@ llm_evaluation:
 
   page_count_etc_judgment:
     provider: "gemini"
-    model: "gemini-2.0-flash-lite"    # flash or pro
+    model: "gemini-2.5-pro"
     max_retries: 3
     timeout: 30
     temperature: 0.1
