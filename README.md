@@ -57,5 +57,5 @@ process_pdf メソッドにより，パイプラインを実行する
 
 DocumetAIを動かす前に必要なこと
 https://cloud.google.com/docs/authentication/set-up-adc-local-dev-environment?hl=ja#google-idp
-
 と、~/.config/gcloud/application_default_credentials.jsonここにファイルができる。
+gcp-credentials.jsonとしてコピーする。コミットに含めるとPushできなくなるので気をつけ
