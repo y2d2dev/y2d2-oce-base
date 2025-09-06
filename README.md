@@ -1,13 +1,35 @@
 # y2d2-oce-base
 OCRのベースリポジトリ
 
-Docker
+## Docker実行
 
-docker build -t y2d2-pipeline . && docker run -it --rm y2d2-pipeline
+### 1. 初回ビルド（1回のみ）
+```bash
+docker build -t y2d2-pipeline .
+```
 
-docker run -it --rm y2d2-pipeline
+### 2. 開発モード（コード変更してもビルド不要）
+```bash
+# pdf/ディレクトリのPDFを自動処理
+docker run --rm -v $(pwd):/app y2d2-pipeline python src/main_pipeline.py
 
-python /app/src/main_pipeline.py
+# 指定したPDFを処理
+docker run --rm -v $(pwd):/app y2d2-pipeline python src/main_pipeline.py --input pdf/your_file.pdf
+```
+
+### 3. 対話モード（開発・デバッグ用）
+```bash
+docker run -it --rm -v $(pwd):/app y2d2-pipeline bash
+# コンテナ内で自由に実行:
+# python src/main_pipeline.py
+# python src/main_pipeline.py --input pdf/test.pdf
+```
+
+**📝 重要：** `-v $(pwd):/app` でローカルコードをマウントするため、**コード変更時にビルド不要**です。
+
+## 開発者向け情報
+
+詳細な開発ルール・ログフォーマット・トラブルシューティングについては [DEVELOPMENT.md](./DEVELOPMENT.md) を参照してください。
 
 
 

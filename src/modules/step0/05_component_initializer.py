@@ -7,8 +7,8 @@ from typing import Dict
 
 logger = logging.getLogger(__name__)
 
-# 実際のコンポーネントインポート（一旦コメントアウト）
-# from src.pipeline.pdf_processor import PDFProcessor
+# 実際のコンポーネントインポート
+from src.modules.step1 import PDFProcessor
 # from src.pipeline.llm_evaluator_judgment import LLMEvaluatorJudgment
 # from src.pipeline.llm_evaluator_ocr import LLMEvaluatorOCR
 # from src.pipeline.llm_evaluator_orientation import LLMEvaluatorOrientation
@@ -38,12 +38,17 @@ class ComponentInitializer:
         Returns:
             Dict: 初期化されたコンポーネントの辞書
         """
-        # 一旦コメントアウトして空の辞書を返す
+        # コンポーネント初期化
         components = {}
         
-        # TODO: 実際のコンポーネント初期化（後で実装）
-        # components = {
-        #     'pdf_processor': PDFProcessor(self.config.get('pdf_processing', {})),
+        # Step1: PDFProcessor初期化
+        try:
+            components['pdf_processor'] = PDFProcessor(self.config)
+        except Exception as e:
+            logger.error(f"❌ PDFProcessor初期化エラー: {e}")
+        
+        # TODO: 他のコンポーネント初期化（後で実装）
+        # components.update({
         #     'llm_evaluator_judgment': LLMEvaluatorJudgment(self.config.get('llm_evaluation', {}), self.prompts),
         #     'llm_evaluator_ocr': LLMEvaluatorOCR(self.config.get('llm_evaluation', {}), self.prompts),
         #     'llm_evaluator_orientation': LLMEvaluatorOrientation(self.config.get('llm_evaluation', {}), self.prompts),
@@ -51,7 +56,7 @@ class ComponentInitializer:
         #     'dewarping_runner': DewarpingRunner(self.config.get('dewarping', {})),
         #     'image_splitter': ImageSplitter(self.config.get('split_image_for_ocr', {})),
         #     'sr_runner': SuperResolutionRunner(self.config.get('super_resolution', {}))
-        # }
+        # })
         
         self.components = components
         

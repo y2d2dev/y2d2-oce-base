@@ -2,8 +2,12 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Step0に必要な最小限のパッケージのみ
-RUN pip install --no-cache-dir pyyaml python-dotenv
+# 必要なパッケージをインストール
+RUN pip install --no-cache-dir \
+    pyyaml \
+    python-dotenv \
+    PyMuPDF \
+    Pillow
 
 # プロジェクトファイルをコピー
 COPY . /app/

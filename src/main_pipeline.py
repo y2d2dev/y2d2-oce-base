@@ -65,15 +65,15 @@ class DocumentOCRPipeline:
         components = component_initializer.initialize_all()
         logger.info("Step0-05: コンポーネント初期化 完了‼️")
         
-        # 初期化されたコンポーネントをインスタンス変数に設定（一旦コメントアウト）
-        # self.pdf_processor = components['pdf_processor']
-        # self.llm_evaluator_judgment = components['llm_evaluator_judgment']
-        # self.llm_evaluator_ocr = components['llm_evaluator_ocr']
-        # self.llm_evaluator_orientation = components['llm_evaluator_orientation']
-        # self.orientation_detector = components['orientation_detector']
-        # self.dewarping_runner = components['dewarping_runner']
-        # self.image_splitter = components['image_splitter']
-        # self.sr_runner = components['sr_runner']
+        # 初期化されたコンポーネントをインスタンス変数に設定
+        self.pdf_processor = components.get('pdf_processor')
+        # self.llm_evaluator_judgment = components.get('llm_evaluator_judgment')
+        # self.llm_evaluator_ocr = components.get('llm_evaluator_ocr')
+        # self.llm_evaluator_orientation = components.get('llm_evaluator_orientation')
+        # self.orientation_detector = components.get('orientation_detector')
+        # self.dewarping_runner = components.get('dewarping_runner')
+        # self.image_splitter = components.get('image_splitter')
+        # self.sr_runner = components.get('sr_runner')
         
         # Step0-06: ディレクトリ管理の設定
         self.directory_manager = DirectoryManager(self.config)
@@ -82,28 +82,29 @@ class DocumentOCRPipeline:
         self._to_int = to_int
         self._to_float = to_float
         logger.info("Step0-06: ディレクトリ管理 完了‼️")
-        
-        logger.info("--- Step0:初期化 完了‼️ ---")
   
-#     def _pdf_to_jpg(self, pdf_path: str, output_dir: str) -> Dict:
-#         """
-#         ステップ1: PDF → JPG変換
+   # Step1: PDF → JPG変換
+    def _pdf_to_jpg(self, pdf_path: str, output_dir: str) -> Dict:
+        """
+        ステップ1: PDF → JPG変換
         
-#         Args:
-#             pdf_path (str): PDFファイルパス
-#             output_dir (str): 出力ディレクトリ
+        Args:
+            pdf_path (str): PDFファイルパス
+            output_dir (str): 出力ディレクトリ
             
-#         Returns:
-#             Dict: 変換結果
-#         """
-#         try:
-#             result = self.pdf_processor.process_pdf(pdf_path, output_dir)
-#             logger.info(f"PDF変換完了: {result['page_count']} ページ")
-#             return result
+        Returns:
+            Dict: 変換結果
+        """
+        try:
+            if not self.pdf_processor:
+                raise RuntimeError("PDFProcessorが初期化されていません")
             
-#         except Exception as e:
-#             logger.error(f"PDF変換エラー: {e}")
-#             return {"success": False, "error": str(e)}
+            result = self.pdf_processor.process_pdf(pdf_path, output_dir)
+            return result
+            
+        except Exception as e:
+            logger.error(f"PDF変換エラー: {e}")
+            return {"success": False, "error": str(e)}
     
 #     def _dewarping_llm_judgment(self, image_path: str, output_dir: str, page_number: int) -> Dict:
 #         """
@@ -876,52 +877,57 @@ class DocumentOCRPipeline:
 
 #         # === 追加: LLM出力の型解釈ユーティリティをクラス全体で利用可能に ===
 
-#     def process_pdf(self, pdf_path: str, output_session_id: Optional[str] = None) -> Dict:
-#         """
-#         PDFファイルを処理するメインメソッド
+    def process_pdf(self, pdf_path: str, output_session_id: Optional[str] = None) -> Dict:
+        """
+        PDFファイルを処理するメインメソッド（Step1のみ実装）
         
-#         Args:
-#             pdf_path (str): 処理対象のPDFファイルパス
-#             output_session_id (str, optional): 出力セッションID
+        Args:
+            pdf_path (str): 処理対象のPDFファイルパス
+            output_session_id (str, optional): 出力セッションID
             
-#         Returns:
-#             Dict: 処理結果の詳細情報
-#         """
-#         # セッションIDの生成
-#         if output_session_id is None:
-#             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-#             base_name = os.path.splitext(os.path.basename(pdf_path))[0]
-#             output_session_id = f"{base_name}_{timestamp}"
+        Returns:
+            Dict: 処理結果の詳細情報
+        """
+        # セッションIDの生成
+        if output_session_id is None:
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            base_name = os.path.splitext(os.path.basename(pdf_path))[0]
+            output_session_id = f"{base_name}_{timestamp}"
         
-#         logger.info(f"🚀 === PDF処理開始: {os.path.basename(pdf_path)} ===")
-#         logger.info(f"🏷️ セッションID: {output_session_id}")
+        # セッション用ディレクトリの作成
+        session_dirs = self.directory_manager.create_session_directories(output_session_id)
         
-#         # セッション用ディレクトリの作成
-#         session_dirs = self.directory_manager.create_session_directories(output_session_id)
+        # 処理結果を記録
+        pipeline_result = {
+            "session_id": output_session_id,
+            "input_pdf": pdf_path,
+            "start_time": datetime.now().isoformat(),
+            "session_dirs": session_dirs,
+            "steps": {},
+            "final_results": {},
+            "success": False
+        }
         
-#         # 処理結果を記録
-#         pipeline_result = {
-#             "session_id": output_session_id,
-#             "input_pdf": pdf_path,
-#             "start_time": datetime.now().isoformat(),
-#             "session_dirs": session_dirs,
-#             "steps": {
-#                 "llm_judgments": {},
-#             },
-#             "final_results": {},
-#             "success": False
-#         }
-        
-#         try:
-#             # 現在のPDFパスを保存
-#             self._current_pdf_path = pdf_path
+        try:
+            # ステップ1: PDF → JPG変換
+            pdf_result = self._pdf_to_jpg(pdf_path, session_dirs["converted_images"])
+            pipeline_result["steps"]["pdf_conversion"] = pdf_result
+            
+            if not pdf_result.get("success"):
+                raise RuntimeError("PDF変換に失敗しました")
 
-#             # ステップ1: PDF → JPG変換
-#             logger.info("📄 ステップ1: PDF → JPG変換")
-#             pdf_result = self._pdf_to_jpg(pdf_path, session_dirs["converted_images"])
-#             pipeline_result["steps"]["pdf_conversion"] = pdf_result
-#             # PDF変換結果を保存（各ページのDPI情報を含む）
-#             self._current_pdf_info = pdf_result
+            # Step1完了
+            pipeline_result["success"] = True
+            pipeline_result["end_time"] = datetime.now().isoformat()
+            pipeline_result["final_results"] = pdf_result
+            
+            return pipeline_result
+            
+        except Exception as e:
+            logger.error(f"パイプライン処理エラー: {e}")
+            pipeline_result["error"] = str(e)
+            pipeline_result["end_time"] = datetime.now().isoformat()
+            return pipeline_result
             
 #             if not pdf_result.get("success"):
 #                 raise RuntimeError("PDF変換に失敗しました")
@@ -1229,25 +1235,69 @@ class DocumentOCRPipeline:
 
 def main():
     """
-    メイン実行関数
+    メイン実行関数 (Step1 PDF変換対応版)
     """
     import argparse
-    import logging
     
-    logger = logging.getLogger(__name__)
+    parser = argparse.ArgumentParser(
+        description="Document OCR Pipeline - Step1 PDF変換",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+使用例:
+  python main_pipeline.py                           # pdf/内のPDFを自動検出
+  python main_pipeline.py --input document.pdf     # 指定したPDFを処理
+  python main_pipeline.py --config config.yml      # 設定ファイルを指定
+        """
+    )
     
-    parser = argparse.ArgumentParser(description="Document OCR Pipeline - Step0初期化テスト")
     parser.add_argument("--config", default="config.yml", help="設定ファイルパス")
+    parser.add_argument("--input", help="入力PDFファイルパス")
+    parser.add_argument("--session-id", help="セッションID（省略時は自動生成）")
+    
     args = parser.parse_args()
     
     try:
-        # Step0初期化の実行
+        # パイプライン初期化
         pipeline = DocumentOCRPipeline(args.config)
+        
+        # 入力PDFファイルの決定
+        pdf_input = args.input
+        
+        if not pdf_input:
+            # --inputが指定されていない場合、pdf/ディレクトリを検索
+            pdf_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "pdf")
+            if os.path.exists(pdf_dir):
+                pdf_files = [f for f in os.listdir(pdf_dir) if f.lower().endswith('.pdf')]
+                if pdf_files:
+                    pdf_input = os.path.join(pdf_dir, pdf_files[0])
+                else:
+                    print(f"❌ pdf/ディレクトリにPDFファイルが見つかりません")
+                    return 1
+            else:
+                print("❌ --input でPDFファイルを指定するか、pdf/ディレクトリにPDFファイルを配置してください")
+                return 1
+        
+        if not os.path.exists(pdf_input):
+            print(f"❌ PDFファイルが見つかりません: {pdf_input}")
+            return 1
+        
+        # PDF処理実行
+        result = pipeline.process_pdf(pdf_input, args.session_id)
+        
+        # 結果表示
+        if result["success"]:
+            final_results = result.get("final_results", {})
+        else:
+            print(f"❌ 処理失敗: {result.get('error', '不明なエラー')}")
+            return 1
         
         return 0
         
+    except KeyboardInterrupt:
+        print("\n⚠️ ユーザーによって処理が中断されました")
+        return 1
     except Exception as e:
-        logger.error(f"❌ エラー: {e}")
+        print(f"❌ エラー: {e}")
         return 1
 
 
