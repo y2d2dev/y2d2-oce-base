@@ -127,6 +127,15 @@ class ComponentInitializer:
         except Exception as e:
             logger.error(f"❌ Step4プロセッサー初期化エラー: {e}")
         
+        # Step5プロセッサー初期化
+        try:
+            from src.modules.step5 import Step5Processor
+            components['step5_processor'] = Step5Processor(self.config)
+            logger.debug("Step5プロセッサー初期化完了")
+        except Exception as e:
+            logger.error(f"❌ ❌ Step5プロセッサー初期化エラー: {e}")
+            components['step5_processor'] = None
+        
         # TODO: 他のコンポーネント初期化（後で実装）
         # components.update({
         #     'llm_evaluator_judgment': LLMEvaluatorJudgment(self.config.get('llm_evaluation', {}), self.prompts),

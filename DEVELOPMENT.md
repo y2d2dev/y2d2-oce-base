@@ -88,6 +88,17 @@ docker run -it --rm -v $(pwd):/app y2d2-pipeline bash
 - `01_orientation_detector.py` - 画像の向き検出（LLMベース）
 - `02_image_rotator.py` - 画像回転処理
 - `03_step3_processor.py` - Step3統合オーケストレーター
+- `04_llm_orientation_evaluator.py` - LLM画像向き評価器
+
+#### Step4（ページ数等判定・ページ分割）
+- `01_page_count_evaluator.py` - ページ数判定（LLMベース）
+- `02_page_splitter.py` - ページ分割処理
+- `03_step4_processor.py` - Step4統合オーケストレーター
+
+#### Step5（OCR用画像分割）
+- `01_image_splitter.py` - 画像分割エンジン（5等分オーバーラップ分割）
+- `02_image_processor.py` - 分割結果整理・OCRグループ管理
+- `03_step5_processor.py` - Step5統合オーケストレーター
 
 ### ファイル命名規則
 - **全モジュールで統一された数字プレフィックス使用**
@@ -145,8 +156,30 @@ data/output/
 ├── converted_images/{session_id}/     # Step1: PDF→JPG変換結果
 ├── dewarped/{session_id}/            # Step2: 歪み補正結果
 ├── llm_judgments/{session_id}/       # Step2: LLM判定結果（JSON）
+├── split_images/{session_id}/        # Step5: OCR用分割画像
+├── super_resolved/{session_id}/      # Step6: 超解像処理結果
 └── final_results/{session_id}/       # 最終処理結果
 ```
+
+## Step5処理詳細
+
+### Step5: OCR用画像分割
+1. **Step5-01: 画像分割エンジン**
+   - 各歪み補正済み画像を5等分に分割（オーバーラップあり）
+   - 設定可能：分割数（デフォルト5）、オーバーラップ比率（デフォルト0.1）
+   - 元画像と分割画像を両方保存
+
+2. **Step5-02: 分割結果整理**
+   - 分割画像の情報整理とOCRグループ作成
+   - ページ・ソース画像ごとのグループ化
+   - 処理統計情報の生成
+
+### Step5画像分割仕様
+- **分割方式**: 縦方向5等分（オーバーラップ付き）
+- **分割数**: 設定可能（デフォルト5分割）
+- **オーバーラップ**: 設定可能（デフォルト10%）
+- **最小高さ**: 分割後画像の最小高さ制限（デフォルト100px）
+- **出力形式**: JPEG品質95で保存
 
 ## リファクタリング進行状況
 
@@ -160,9 +193,9 @@ data/output/
 - ✅ Step2: LLM判定・再画像化・歪み補正 - 4つのモジュールに分割完了
 - ✅ Step3: 回転判定・補正 - 4つのモジュール（LLM評価器含む）に分割完了
 - ✅ Step4: ページ数等判定・ページ分割 - 3つのモジュールに分割完了
+- ✅ Step5: OCR用画像分割 - 3つのモジュールに分割完了
 
 ### 未実装（pre-pipleine.pyからリファクタ予定）
-- Step5: 画像分割
 - Step6: 超解像処理
 - Step7: OCR実行
 
@@ -172,6 +205,9 @@ data/output/
 Step2-01: 完了!!
 Step2-02: 完了!!
 Step3-01: 完了!!
+Step4-01: 完了!!
+Step5-01: 完了!!
+Step5-02: 完了!!
 ...
 ```
 

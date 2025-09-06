@@ -87,11 +87,13 @@ class DocumentOCRPipeline:
         if self.step4_processor:
             self.step4_processor.prompts = self.prompts
         
-        # Step5以降のコンポーネント（未実装）
+        # Step5プロセッサー初期化
+        self.step5_processor = components.get('step5_processor')
+        
+        # Step6以降のコンポーネント（未実装）
         # self.llm_evaluator_judgment = components.get('llm_evaluator_judgment')
         # self.llm_evaluator_ocr = components.get('llm_evaluator_ocr')
         # self.llm_evaluator_orientation = components.get('llm_evaluator_orientation')
-        # self.orientation_detector = components.get('orientation_detector')
         # self.dewarping_runner = components.get('dewarping_runner')
         # self.image_splitter = components.get('image_splitter')
         # self.sr_runner = components.get('sr_runner')
@@ -213,6 +215,38 @@ class DocumentOCRPipeline:
             }
         
         return await self.step4_processor.process_pages(page_results, session_dirs)
+    
+    # Step5: OCR用画像分割処理
+    async def _process_step5(self, step4_result: Dict, session_dirs: Dict) -> Dict:
+        """
+        ステップ5: OCR用画像分割処理
+        
+        Args:
+            step4_result (Dict): Step4処理結果
+            session_dirs (Dict): セッションディレクトリ辞書
+            
+        Returns:
+            Dict: Step5処理結果
+        """
+        if not self.step5_processor:
+            logger.warning("⚠️ Step5プロセッサーが初期化されていません。Step5処理をスキップします。")
+            return {
+                "success": False,
+                "error": "Step5プロセッサー初期化失敗",
+                "split_image_data": []
+            }
+        
+        # Step4の結果からページデータを取得
+        page_results = step4_result.get("page_results", [])
+        if not page_results:
+            logger.warning("Step5: 処理対象ページがありません")
+            return {
+                "success": True,
+                "split_image_data": [],
+                "message": "処理対象ページがありません"
+            }
+        
+        return await self.step5_processor.process_pages(page_results, session_dirs)
 
     async def process_pdf(self, pdf_path: str, output_session_id: Optional[str] = None) -> Dict:
         """
@@ -276,10 +310,19 @@ class DocumentOCRPipeline:
             pipeline_result["steps"]["step4_processing"] = step4_result
             
             if not step4_result.get("success"):
-                logger.warning("Step4処理で一部エラーが発生しましたが、処理を続行します")
+                logger.warning("⚠️ Step4処理で一部エラーが発生しましたが、処理を続行します")
+            
+            # ステップ5: OCR用画像分割
+            step5_result = await self._process_step5(step4_result, session_dirs)
+            pipeline_result["steps"]["step5_split_images"] = step5_result
+            
+            if not step5_result.get("success"):
+                logger.warning("⚠️ Step5処理で一部エラーが発生しましたが、処理を続行します")
             
             # 最終結果を設定（最後に成功したStepの結果を使用）
-            if step4_result.get("success"):
+            if step5_result.get("success"):
+                pipeline_result["final_results"] = step5_result
+            elif step4_result.get("success"):
                 pipeline_result["final_results"] = step4_result
             elif step3_result.get("success"):
                 pipeline_result["final_results"] = step3_result
