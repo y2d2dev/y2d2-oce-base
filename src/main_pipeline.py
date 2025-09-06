@@ -75,7 +75,14 @@ class DocumentOCRPipeline:
         if self.step2_processor:
             self.step2_processor.prompts = self.prompts
         
-        # Step3以降のコンポーネント（コメントアウト中）
+        # Step3: Step3統合プロセッサー（プロンプトを設定）
+        self.step3_processor = components.get('step3_processor')
+        self.orientation_detector = components.get('orientation_detector')
+        if self.orientation_detector and hasattr(self.orientation_detector, 'llm_evaluator'):
+            # Step3のLLM評価器にプロンプトを設定
+            self.orientation_detector.prompts = self.prompts
+        
+        # Step4以降のコンポーネント（未実装）
         # self.llm_evaluator_judgment = components.get('llm_evaluator_judgment')
         # self.llm_evaluator_ocr = components.get('llm_evaluator_ocr')
         # self.llm_evaluator_orientation = components.get('llm_evaluator_orientation')
@@ -137,6 +144,38 @@ class DocumentOCRPipeline:
             }
         
         return await self.step2_processor.process_pages(pdf_result, pdf_path, session_dirs)
+    
+    # Step3: 回転判定・補正処理
+    async def _process_step3(self, step2_result: Dict, session_dirs: Dict) -> Dict:
+        """
+        ステップ3: 回転判定・補正処理
+        
+        Args:
+            step2_result (Dict): Step2処理結果
+            session_dirs (Dict): セッションディレクトリ辞書
+            
+        Returns:
+            Dict: Step3処理結果
+        """
+        if not self.step3_processor:
+            logger.warning("Step3プロセッサーが初期化されていません。Step3処理をスキップします。")
+            return {
+                "success": False,
+                "error": "Step3プロセッサー初期化失敗",
+                "page_results": []
+            }
+        
+        # Step2の結果からページデータを取得
+        page_results = step2_result.get("page_results", [])
+        if not page_results:
+            logger.warning("Step3: 処理対象ページがありません")
+            return {
+                "success": True,
+                "page_results": [],
+                "message": "処理対象ページがありません"
+            }
+        
+        return await self.step3_processor.process_pages(page_results, session_dirs)
 
     async def process_pdf(self, pdf_path: str, output_session_id: Optional[str] = None) -> Dict:
         """
@@ -183,10 +222,21 @@ class DocumentOCRPipeline:
             
             if not step2_result.get("success"):
                 logger.warning("Step2処理で一部エラーが発生しましたが、処理を続行します")
-                # Step2が失敗した場合はStep1の結果を最終結果として使用
-                pipeline_result["final_results"] = pdf_result
-            else:
+            
+            # ステップ3: 回転判定・補正
+            step3_result = await self._process_step3(step2_result, session_dirs)
+            pipeline_result["steps"]["step3_processing"] = step3_result
+            
+            if not step3_result.get("success"):
+                logger.warning("Step3処理で一部エラーが発生しましたが、処理を続行します")
+            
+            # 最終結果を設定（最後に成功したStepの結果を使用）
+            if step3_result.get("success"):
+                pipeline_result["final_results"] = step3_result
+            elif step2_result.get("success"):
                 pipeline_result["final_results"] = step2_result
+            else:
+                pipeline_result["final_results"] = pdf_result
             
             # パイプライン完了
             pipeline_result["success"] = True

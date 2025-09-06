@@ -10,6 +10,7 @@ system:
 
 # 処理ステップ設定
 enable_step2: true  # LLM判定・再画像化・歪み補正処理
+enable_step3: true  # 回転判定・補正処理
 
 # ディレクトリ設定
 directories:
@@ -84,6 +85,15 @@ llm_evaluation:
 # OCR設定
 ocr:
   contract_mode: true  # 契約書用の構造化OCRを使用
+
+# 回転検出設定
+orientation_detection:
+  enabled: true
+  use_llm: true  # LLMを使用して回転角度を検出
+  debug_save: false
+  output_suffix: "_rot"
+  output_format: ".jpg"
+  jpeg_quality: 95
 
 # 歪み補正設定
 dewarping:

@@ -35,6 +35,40 @@ dewarping_judgment:
 
 # 回転方向判定プロンプト ★ の色で判定 ({{}} format エラーを避けるため)
 orientation_judgment:
+  system_prompt: |
+    あなたは文書画像の向きを判定するAIアシスタントです。
+    提供された画像が正しい向きで表示されているか、回転が必要かを判定します。
+    文字や記号、文書の構造を見て正確に判定してください。
+
+  user_prompt: |
+    この画像の向きを判定してください。画像に含まれる文字や文書構造を見て、人間が普通に読める向きになっているかを確認してください。
+    
+    **重要な判定基準：**
+    - 日本語の文字が正しい向きで読めるか
+    - 文書のレイアウトが自然に見えるか
+    - 既に正しい向きの場合は回転不要と判定してください
+    
+    以下のJSON形式で出力してください：
+    ```json
+    {
+      "rotation_needed": false,
+      "recommended_angle": 0,
+      "confidence_score": 0.95,
+      "reasoning": "日本語の文字が正しい向きで表示されており、回転は不要",
+      "text_readability": "readable"
+    }
+    ```
+
+    - rotation_needed: 回転が必要かどうか（true/false）
+    - recommended_angle: 回転角度（0, 90, -90, 180のいずれか）
+      - 0: 回転不要（正しい向き）
+      - 90: 時計回りに90度回転
+      - -90: 反時計回りに90度回転  
+      - 180: 180度回転（上下反転）
+    - confidence_score: 判定の信頼度（0.0-1.0）
+    - reasoning: 判定理由の詳細説明
+    - text_readability: テキストの読みやすさ（readable/difficult/unreadable）
+
   system_template: |
     あなたは文書画像の向きを判定するアシスタントです。ラウンド={round_label} ペア index={pair_index}。
     2枚のストリップ画像のうち、どちらの画像が正しい向き(人間が普通に読む向き)に映っているかを判定します。

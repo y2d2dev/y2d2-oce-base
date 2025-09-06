@@ -46,6 +46,7 @@ class ComponentInitializer:
             logger.error(f"❌ PDFProcessor初期化エラー: {e}")
         
         # Step2: Step2統合プロセッサー初期化
+        llm_judgment = None  # 他のStepでも使用するため外側で宣言
         try:
             if self.config.get('enable_step2', False):
                 from src.modules.step2 import LLMJudgment, ImageReprocessor, DewarpingEngine, Step2Processor
@@ -61,6 +62,7 @@ class ComponentInitializer:
                     components['step2_processor'] = Step2Processor(
                         llm_judgment, image_reprocessor, dewarping_engine, {}
                     )
+                    components['llm_judgment'] = llm_judgment  # 他のStepでも使用できるように保存
                     logger.debug("Step2統合プロセッサー初期化完了")
                 else:
                     logger.warning("Step2個別コンポーネント初期化失敗")
@@ -68,6 +70,38 @@ class ComponentInitializer:
                 logger.debug("Step2処理は無効に設定されています")
         except Exception as e:
             logger.error(f"❌ Step2プロセッサー初期化エラー: {e}")
+        
+        # Step3: 回転判定・補正プロセッサー初期化
+        try:
+            if self.config.get('enable_step3', False):
+                from src.modules.step3 import OrientationDetector, ImageRotator, Step3Processor, LLMOrientationEvaluator
+                
+                # Step3専用のLLM評価器を初期化
+                llm_orientation_evaluator = LLMOrientationEvaluator(self.config)
+                
+                # 個別コンポーネントを初期化
+                orientation_detector = OrientationDetector(self.config)
+                image_rotator = ImageRotator(self.config)
+                
+                # Step3専用のLLM評価器をアタッチ
+                # プロンプトは後でmain_pipelineで設定するため、ここでは空の辞書を設定
+                orientation_detector.attach_llm_evaluator(llm_orientation_evaluator, {})
+                logger.debug("Step3にStep3専用LLM評価器をアタッチしました")
+                
+                # 統合プロセッサーを初期化
+                if all([orientation_detector, image_rotator]):
+                    components['step3_processor'] = Step3Processor(
+                        orientation_detector, image_rotator
+                    )
+                    components['orientation_detector'] = orientation_detector
+                    components['llm_orientation_evaluator'] = llm_orientation_evaluator
+                    logger.debug("Step3統合プロセッサー初期化完了")
+                else:
+                    logger.warning("Step3個別コンポーネント初期化失敗")
+            else:
+                logger.debug("Step3処理は無効に設定されています")
+        except Exception as e:
+            logger.error(f"❌ Step3プロセッサー初期化エラー: {e}")
         
         # TODO: 他のコンポーネント初期化（後で実装）
         # components.update({

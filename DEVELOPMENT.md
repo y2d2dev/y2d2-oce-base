@@ -82,6 +82,12 @@ docker run -it --rm -v $(pwd):/app y2d2-pipeline bash
 - `01_llm_judgment.py` - LLM歪み判定（Gemini API使用）
 - `02_image_reprocessor.py` - 再画像化処理
 - `03_dewarping_engine.py` - 歪み補正処理（YOLO使用）
+- `04_step2_processor.py` - Step2統合オーケストレーター
+
+#### Step3（回転判定・補正）
+- `01_orientation_detector.py` - 画像の向き検出（LLMベース）
+- `02_image_rotator.py` - 画像回転処理
+- `03_step3_processor.py` - Step3統合オーケストレーター
 
 ### ファイル命名規則
 - **全モジュールで統一された数字プレフィックス使用**
@@ -152,9 +158,9 @@ data/output/
 - ✅ Step0: 初期化処理 - 6つのモジュールに分割完了
 - ✅ Step1: PDF→JPG変換 - 4つのモジュールに分割完了  
 - ✅ Step2: LLM判定・再画像化・歪み補正 - 4つのモジュールに分割完了
+- ✅ Step3: 回転判定・補正 - 3つのモジュールに分割完了
 
-### 未実装（pre-pipeline.pyからリファクタ予定）
-- Step3: 回転判定・補正
+### 未実装（pre-pipleine.pyからリファクタ予定）
 - Step4: OCR処理
 - Step4: ページ分割
 - Step5: 画像分割
