@@ -8,6 +8,9 @@ system:
   max_workers: 4
   cleanup_temp: true
 
+# 処理ステップ設定
+enable_step2: true  # LLM判定・再画像化・歪み補正処理
+
 # ディレクトリ設定
 directories:
   input: "data/input"

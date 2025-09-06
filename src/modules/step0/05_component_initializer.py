@@ -21,14 +21,12 @@ from src.modules.step1 import PDFProcessor
 class ComponentInitializer:
     """コンポーネント初期化クラス"""
     
-    def __init__(self, config: Dict, prompts: Dict):
+    def __init__(self, config: Dict):
         """
         Args:
             config (Dict): 設定データ
-            prompts (Dict): プロンプト設定データ
         """
         self.config = config
-        self.prompts = prompts
         self.components = {}
     
     def initialize_all(self) -> Dict:
@@ -46,6 +44,30 @@ class ComponentInitializer:
             components['pdf_processor'] = PDFProcessor(self.config)
         except Exception as e:
             logger.error(f"❌ PDFProcessor初期化エラー: {e}")
+        
+        # Step2: Step2統合プロセッサー初期化
+        try:
+            if self.config.get('enable_step2', False):
+                from src.modules.step2 import LLMJudgment, ImageReprocessor, DewarpingEngine, Step2Processor
+                
+                # 個別コンポーネントを初期化
+                llm_judgment = LLMJudgment(self.config)
+                image_reprocessor = ImageReprocessor(components.get('pdf_processor'), self.config)
+                dewarping_engine = DewarpingEngine(self.config)
+                
+                # 統合プロセッサーを初期化 (promptsは後でmain_pipelineで設定)
+                if all([llm_judgment, image_reprocessor, dewarping_engine]):
+                    # プロンプトは空の辞書で初期化、後でmain_pipelineで設定
+                    components['step2_processor'] = Step2Processor(
+                        llm_judgment, image_reprocessor, dewarping_engine, {}
+                    )
+                    logger.debug("Step2統合プロセッサー初期化完了")
+                else:
+                    logger.warning("Step2個別コンポーネント初期化失敗")
+            else:
+                logger.debug("Step2処理は無効に設定されています")
+        except Exception as e:
+            logger.error(f"❌ Step2プロセッサー初期化エラー: {e}")
         
         # TODO: 他のコンポーネント初期化（後で実装）
         # components.update({

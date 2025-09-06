@@ -73,15 +73,31 @@ docker run -it --rm -v $(pwd):/app y2d2-pipeline bash
 - `06_directory_manager.py` - ディレクトリ管理
 
 #### Step1（PDF→JPG変換）
-- `pdf_reader.py` - PDF読み取り・基本操作
-- `dpi_calculator.py` - DPI計算ロジック
-- `image_converter.py` - ページ→画像変換
-- `pdf_processor.py` - メインオーケストレーター
+- `01_pdf_reader.py` - PDF読み取り・基本操作
+- `02_dpi_calculator.py` - DPI計算ロジック
+- `03_image_converter.py` - ページ→画像変換
+- `04_pdf_processor.py` - メインオーケストレーター
+
+#### Step2（LLM判定・再画像化・歪み補正）
+- `01_llm_judgment.py` - LLM歪み判定（Gemini API使用）
+- `02_image_reprocessor.py` - 再画像化処理
+- `03_dewarping_engine.py` - 歪み補正処理（YOLO使用）
 
 ### ファイル命名規則
-- **数字で始まるファイル名は避ける**（Pythonインポートエラーの原因）
-- 機能を表す分かりやすい名前を使用
-- `__init__.py`で適切にエクスポート
+- **全モジュールで統一された数字プレフィックス使用**
+- フォーマット：`XX_機能名.py`（例：`01_pdf_reader.py`）
+- 数字プレフィックスは処理順序を表す
+- Pythonでは数字プレフィックス付きモジュールを直接インポートできないため、`importlib`を使用
+- `__init__.py`で適切にエクスポートし、外部からは通常のクラス名でアクセス可能にする
+
+#### importlibを使ったインポート例
+```python
+# __init__.py での正しいインポート方法
+import importlib
+
+_pdf_reader_module = importlib.import_module('src.modules.step1.01_pdf_reader')
+PDFReader = _pdf_reader_module.PDFReader
+```
 
 ## PDF処理仕様
 
@@ -102,11 +118,44 @@ data/output/converted_images/{session_id}/
 - DPI範囲：50-600（デフォルト300）
 - ページサイズに基づいて最適DPI自動計算
 
-## 今後の拡張
+## 処理フロー
 
-### Step2以降の実装予定
-- Step2: 歪み判定・補正
+### Step2処理詳細
+1. **Step2-01: LLM歪み判定**
+   - Gemini APIを使用して画像の歪み・読みにくさを判定
+   - 判定結果：`needs_dewarping`, `readability_issues`, `has_out_of_document`
+
+2. **Step2-02: 再画像化処理**（条件付き）
+   - `readability_issues="major"`の場合のみ実行
+   - PDFから高解像度（デフォルト2倍DPI）で再変換
+
+3. **Step2-03: 歪み補正処理**（条件付き）
+   - `needs_dewarping=true`の場合のみ実行
+   - YOLOモデルによる文書検出と歪み補正
+
+### 出力ディレクトリ構造
+```
+data/output/
+├── converted_images/{session_id}/     # Step1: PDF→JPG変換結果
+├── dewarped/{session_id}/            # Step2: 歪み補正結果
+├── llm_judgments/{session_id}/       # Step2: LLM判定結果（JSON）
+└── final_results/{session_id}/       # 最終処理結果
+```
+
+## リファクタリング進行状況
+
+### 現在の作業状況
+**重要**: `/Users/naritaharuki/y2d2-oce-base/pre-pipeline.py` に元の完全な実装コードが保存されています。
+このファイルから各Stepの実装を段階的にリファクタリングしています。
+
+### 完了済み
+- ✅ Step0: 初期化処理 - 6つのモジュールに分割完了
+- ✅ Step1: PDF→JPG変換 - 4つのモジュールに分割完了  
+- ✅ Step2: LLM判定・再画像化・歪み補正 - 4つのモジュールに分割完了
+
+### 未実装（pre-pipeline.pyからリファクタ予定）
 - Step3: 回転判定・補正
+- Step4: OCR処理
 - Step4: ページ分割
 - Step5: 画像分割
 - Step6: 超解像処理

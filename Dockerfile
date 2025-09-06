@@ -2,12 +2,26 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# 必要なパッケージをインストール
+# システムパッケージの更新とOpenCV依存関係をインストール
+RUN apt-get update && apt-get install -y \
+    libgl1 \
+    libglib2.0-0 \
+    libsm6 \
+    libxext6 \
+    libxrender1 \
+    libgomp1 \
+    && rm -rf /var/lib/apt/lists/*
+
+# 必要なPythonパッケージをインストール
 RUN pip install --no-cache-dir \
     pyyaml \
     python-dotenv \
     PyMuPDF \
-    Pillow
+    Pillow \
+    opencv-python-headless \
+    numpy \
+    google-generativeai \
+    ultralytics
 
 # プロジェクトファイルをコピー
 COPY . /app/

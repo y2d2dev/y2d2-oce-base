@@ -8,9 +8,16 @@ import logging
 from pathlib import Path
 from typing import Dict, List, Optional
 
-from .pdf_reader import PDFReader
-from .dpi_calculator import DPICalculator
-from .image_converter import ImageConverter
+import importlib
+
+# 数字プレフィックス付きモジュールをインポート
+_pdf_reader_module = importlib.import_module('src.modules.step1.01_pdf_reader')
+_dpi_calculator_module = importlib.import_module('src.modules.step1.02_dpi_calculator')
+_image_converter_module = importlib.import_module('src.modules.step1.03_image_converter')
+
+PDFReader = _pdf_reader_module.PDFReader
+DPICalculator = _dpi_calculator_module.DPICalculator
+ImageConverter = _image_converter_module.ImageConverter
 
 logger = logging.getLogger(__name__)
 
