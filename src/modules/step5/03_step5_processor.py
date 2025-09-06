@@ -149,6 +149,7 @@ class Step5Processor:
         logger.info(f"--- Step5: 完了!! 処理={successful_pages}ページ, 分割={total_split_images}画像 ---")
         
         return {
+            "success": successful_pages > 0,  # 1つでも成功したページがあれば成功
             "step5_results": {
                 "split_results": successful_results,
                 "failed_results": failed_results,

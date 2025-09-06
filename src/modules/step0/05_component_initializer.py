@@ -136,6 +136,32 @@ class ComponentInitializer:
             logger.error(f"❌ ❌ Step5プロセッサー初期化エラー: {e}")
             components['step5_processor'] = None
         
+        # Step6プロセッサー初期化
+        try:
+            if self.config.get('enable_step6', True):  # デフォルトで有効
+                from src.modules.step6 import Step6Processor
+                components['step6_processor'] = Step6Processor(self.config, {})  # プロンプトは後でmain_pipelineで設定
+                logger.debug("Step6プロセッサー初期化完了")
+            else:
+                logger.debug("Step6処理は無効に設定されています")
+                components['step6_processor'] = None
+        except Exception as e:
+            logger.error(f"❌ Step6プロセッサー初期化エラー: {e}")
+            components['step6_processor'] = None
+        
+        # Step7: 結果統合・最終出力プロセッサー初期化
+        try:
+            if self.config.get('enable_step7', True):  # デフォルトで有効
+                from src.modules.step7 import Step7Processor
+                components['step7_processor'] = Step7Processor(self.config)
+                logger.debug("Step7プロセッサー初期化完了")
+            else:
+                logger.debug("Step7処理は無効に設定されています")
+                components['step7_processor'] = None
+        except Exception as e:
+            logger.error(f"❌ Step7プロセッサー初期化エラー: {e}")
+            components['step7_processor'] = None
+        
         # TODO: 他のコンポーネント初期化（後で実装）
         # components.update({
         #     'llm_evaluator_judgment': LLMEvaluatorJudgment(self.config.get('llm_evaluation', {}), self.prompts),

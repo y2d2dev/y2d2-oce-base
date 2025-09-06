@@ -100,6 +100,11 @@ docker run -it --rm -v $(pwd):/app y2d2-pipeline bash
 - `02_image_processor.py` - 分割結果整理・OCRグループ管理
 - `03_step5_processor.py` - Step5統合オーケストレーター
 
+#### Step6（Gemini OCR処理）
+- `01_gemini_ocr_engine.py` - Gemini 2.5 Pro OCRエンジン
+- `02_text_result_manager.py` - テキスト結果保存・管理
+- `03_step6_processor.py` - Step6統合オーケストレーター
+
 ### ファイル命名規則
 - **全モジュールで統一された数字プレフィックス使用**
 - フォーマット：`XX_機能名.py`（例：`01_pdf_reader.py`）
@@ -157,7 +162,7 @@ data/output/
 ├── dewarped/{session_id}/            # Step2: 歪み補正結果
 ├── llm_judgments/{session_id}/       # Step2: LLM判定結果（JSON）
 ├── split_images/{session_id}/        # Step5: OCR用分割画像
-├── super_resolved/{session_id}/      # Step6: 超解像処理結果
+├── ocr_results/{session_id}/         # Step6: OCR抽出テキスト
 └── final_results/{session_id}/       # 最終処理結果
 ```
 
@@ -181,6 +186,27 @@ data/output/
 - **最小高さ**: 分割後画像の最小高さ制限（デフォルト100px）
 - **出力形式**: JPEG品質95で保存
 
+## Step6処理詳細
+
+### Step6: Gemini OCR処理
+1. **Step6-01: Gemini OCRエンジン**
+   - Gemini 2.5 Proを使用して多画像OCR実行
+   - 元画像+分割画像を組み合わせて高精度抽出
+   - 非同期処理・リトライ機能・エラーハンドリング
+
+2. **Step6-02: テキスト結果管理**
+   - OCR結果をTXT/JSON形式で保存
+   - メタデータ付加・処理サマリー生成
+   - エンコーディング・出力形式の設定可能
+
+### Step6 OCR処理仕様
+- **使用API**: Gemini 2.5 Pro (google.generativeai)
+- **入力形式**: 元画像 + 5分割画像（最大6画像同時処理）
+- **出力形式**: TXTファイル + JSONファイル（メタデータ付き）
+- **並列処理**: 設定可能な同時実行数（デフォルト3グループ）
+- **エラー処理**: リトライ機能・指数バックオフ
+- **プロンプト**: `llm_prompts.yaml`の`multi_image_ocr`を使用
+
 ## リファクタリング進行状況
 
 ### 現在の作業状況
@@ -194,10 +220,10 @@ data/output/
 - ✅ Step3: 回転判定・補正 - 4つのモジュール（LLM評価器含む）に分割完了
 - ✅ Step4: ページ数等判定・ページ分割 - 3つのモジュールに分割完了
 - ✅ Step5: OCR用画像分割 - 3つのモジュールに分割完了
+- ✅ Step6: Gemini OCR処理 - 3つのモジュールに分割完了
 
 ### 未実装（pre-pipleine.pyからリファクタ予定）
-- Step6: 超解像処理
-- Step7: OCR実行
+- Step7: 結果統合・最終処理
 
 ### ログフォーマットの統一
 各Stepで同様のフォーマットを維持：
@@ -208,6 +234,8 @@ Step3-01: 完了!!
 Step4-01: 完了!!
 Step5-01: 完了!!
 Step5-02: 完了!!
+Step6-01: 完了!!
+Step6-02: 完了!!
 ...
 ```
 

@@ -21,6 +21,7 @@ RUN pip install --no-cache-dir \
     opencv-python-headless \
     numpy \
     google-generativeai \
+    google-cloud-documentai \
     ultralytics
 
 # プロジェクトファイルをコピー

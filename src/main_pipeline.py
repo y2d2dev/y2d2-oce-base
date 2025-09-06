@@ -90,7 +90,19 @@ class DocumentOCRPipeline:
         # Step5プロセッサー初期化
         self.step5_processor = components.get('step5_processor')
         
-        # Step6以降のコンポーネント（未実装）
+        # Step6プロセッサー初期化
+        self.step6_processor = components.get('step6_processor')
+        if self.step6_processor:
+            # プロンプトを更新
+            self.step6_processor.prompts = self.prompts
+            self.step6_processor.ocr_prompts = self.prompts.get('multi_image_ocr', {})
+            if not self.step6_processor.ocr_prompts:
+                self.step6_processor.ocr_prompts = self.prompts.get('ocr_extraction', {})
+        
+        # Step7プロセッサー初期化
+        self.step7_processor = components.get('step7_processor')
+        
+        # Step8以降のコンポーネント（未実装）
         # self.llm_evaluator_judgment = components.get('llm_evaluator_judgment')
         # self.llm_evaluator_ocr = components.get('llm_evaluator_ocr')
         # self.llm_evaluator_orientation = components.get('llm_evaluator_orientation')
@@ -247,6 +259,73 @@ class DocumentOCRPipeline:
             }
         
         return await self.step5_processor.process_pages(page_results, session_dirs)
+    
+    # Step6: Gemini OCR処理
+    async def _process_step6(self, step5_result: Dict, session_dirs: Dict) -> Dict:
+        """
+        ステップ6: Gemini OCR処理
+        
+        Args:
+            step5_result (Dict): Step5処理結果
+            session_dirs (Dict): セッションディレクトリ辞書
+            
+        Returns:
+            Dict: Step6処理結果
+        """
+        if not self.step6_processor:
+            logger.warning("⚠️ Step6プロセッサーが初期化されていません。Step6処理をスキップします。")
+            return {
+                "success": False,
+                "error": "Step6プロセッサー初期化失敗",
+                "text_extraction_results": []
+            }
+        
+        # Step5の結果をチェック
+        if not step5_result.get("success"):
+            logger.warning("Step6: Step5が失敗しているため、OCR処理をスキップします")
+            return {
+                "success": False,
+                "error": "Step5処理失敗のため、OCR処理をスキップ",
+                "text_extraction_results": []
+            }
+        
+        # OCRグループデータを取得
+        ocr_groups = step5_result.get("ocr_processing_groups", {})
+        if not ocr_groups or not ocr_groups.get("groups"):
+            logger.warning("Step6: 処理対象のOCRグループがありません")
+            return {
+                "success": True,
+                "text_extraction_results": [],
+                "message": "処理対象のOCRグループがありません"
+            }
+        
+        return await self.step6_processor.process_step5_results(step5_result, session_dirs)
+    
+    # Step7: 結果統合・最終出力
+    def _process_step7(self, step6_result: Dict, session_dirs: Dict) -> Dict:
+        """
+        ステップ7: 結果統合・最終出力
+        
+        Args:
+            step6_result (Dict): Step6処理結果
+            session_dirs (Dict): セッションディレクトリ辞書
+            
+        Returns:
+            Dict: Step7処理結果
+        """
+        if not self.step7_processor:
+            logger.warning("⚠️ Step7プロセッサーが初期化されていません。Step7処理をスキップします。")
+            return {
+                "success": False,
+                "error": "Step7プロセッサー初期化失敗",
+                "output_files": []
+            }
+        
+        # Step6の結果をチェック
+        if not step6_result.get("success"):
+            logger.warning("⚠️ Step6処理が失敗していますが、Step7処理を試行します")
+        
+        return self.step7_processor.process_step6_results(step6_result, session_dirs)
 
     async def process_pdf(self, pdf_path: str, output_session_id: Optional[str] = None) -> Dict:
         """
@@ -319,8 +398,26 @@ class DocumentOCRPipeline:
             if not step5_result.get("success"):
                 logger.warning("⚠️ Step5処理で一部エラーが発生しましたが、処理を続行します")
             
+            # ステップ6: Gemini OCR処理
+            step6_result = await self._process_step6(step5_result, session_dirs)
+            pipeline_result["steps"]["step6_ocr_processing"] = step6_result
+            
+            if not step6_result.get("success"):
+                logger.warning("⚠️ Step6処理で一部エラーが発生しましたが、処理を続行します")
+            
+            # ステップ7: 結果統合・最終出力
+            step7_result = self._process_step7(step6_result, session_dirs)
+            pipeline_result["steps"]["step7_integration"] = step7_result
+            
+            if not step7_result.get("success"):
+                logger.warning("⚠️ Step7処理で一部エラーが発生しましたが、処理を続行します")
+            
             # 最終結果を設定（最後に成功したStepの結果を使用）
-            if step5_result.get("success"):
+            if step7_result.get("success"):
+                pipeline_result["final_results"] = step7_result
+            elif step6_result.get("success"):
+                pipeline_result["final_results"] = step6_result
+            elif step5_result.get("success"):
                 pipeline_result["final_results"] = step5_result
             elif step4_result.get("success"):
                 pipeline_result["final_results"] = step4_result

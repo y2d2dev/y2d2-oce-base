@@ -54,3 +54,8 @@ process_pdf メソッドにより，パイプラインを実行する
 5-1. 画像5等分 (オーバーラップ付き)
 6-1. 超解像処理 (DRCT)
 7-1. OCR実行 (LLM)
+
+DocumetAIを動かす前に必要なこと
+https://cloud.google.com/docs/authentication/set-up-adc-local-dev-environment?hl=ja#google-idp
+
+と、~/.config/gcloud/application_default_credentials.jsonここにファイルができる。
